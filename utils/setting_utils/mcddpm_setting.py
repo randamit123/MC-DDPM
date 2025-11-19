@@ -1,4 +1,4 @@
-from models.mcddpm_unet import KspaceModel
+from models.mcddpm_cunet import KspaceModel
 from utils.ddpm_utils.mcddpm_gaussian_diffusion import KspaceSpacedDiffusion, space_timesteps
 import utils.ddpm_utils.mcddpm_gaussian_diffusion as mcgd
 
@@ -156,9 +156,9 @@ def create_model(
 
     return KspaceModel(
         image_size=image_size,
-        in_channels=2,
+        in_channels=1,  # 1 complex channel (will be doubled internally to 2)
         model_channels=model_channels,
-        out_channels=(2 if not learn_sigma else 4),
+        out_channels=(1 if not learn_sigma else 2),  # 1 or 2 complex channels
         num_res_blocks=num_res_blocks,
         attention_resolutions=tuple(attention_ds),
         dropout=dropout,

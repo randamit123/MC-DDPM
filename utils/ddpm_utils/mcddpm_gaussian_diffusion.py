@@ -179,7 +179,25 @@ class KspaceGaussianDiffusion(GaussianDiffusion):
     def training_losses(self, model, x_start, t, model_kwargs):
         assert model_kwargs is not None, "model_kwargs contains the condtions"
         self._mask_c = model_kwargs["mask_c"]
-        return super().training_losses(model, x_start, t, model_kwargs=model_kwargs)
+        
+        # Get losses from parent
+        terms = super().training_losses(model, x_start, t, model_kwargs=model_kwargs)
+        
+        # Fix MSE loss for complex tensors
+        # Parent uses (target - output)**2 which is wrong for complex
+        # We need |target - output|² = (target - output).abs()**2
+        if "mse" in terms and x_start.is_complex():
+            # Recompute with correct complex MSE
+            x_t, noise = self.q_sample(x_start, t)
+            model_output = model(x_t, self._scale_timesteps(t), **model_kwargs)
+            target = noise
+            
+            # Correct complex MSE: sum of squared magnitudes
+            diff = target - model_output
+            terms["mse"] = mean_flat(diff.real ** 2 + diff.imag ** 2)
+            terms["loss"] = terms["mse"]
+        
+        return terms
 
 
 class KspaceSpacedDiffusion(KspaceGaussianDiffusion):
